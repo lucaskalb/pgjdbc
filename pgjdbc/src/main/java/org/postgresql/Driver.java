@@ -7,14 +7,9 @@ package org.postgresql;
 
 import org.postgresql.jdbc.PgConnection;
 import org.postgresql.util.DriverInfo;
-import org.postgresql.util.ExpressionProperties;
-import org.postgresql.util.GT;
-import org.postgresql.util.HostSpec;
-import org.postgresql.util.PSQLException;
-import org.postgresql.util.PSQLState;
-import org.postgresql.util.SharedTimer;
-import org.postgresql.util.URLCoder;
-import org.postgresql.util.WriterHandler;
+import org.postgresql.util.*;
+import org.postgresql.vault.VaultAuthentication;
+import org.postgresql.vault.VaultUser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,20 +17,12 @@ import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.DriverPropertyInfo;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.Set;
-import java.util.logging.Formatter;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import java.util.logging.StreamHandler;
+import java.util.logging.*;
 
 /**
  * <p>The Java SQL framework allows for multiple database drivers. Each driver should supply a class
@@ -246,6 +233,14 @@ public class Driver implements java.sql.Driver {
       setupLoggerFromProperties(props);
 
       LOGGER.log(Level.FINE, "Connecting with URL: {0}", url);
+
+
+      boolean isAuthVaultModeOn = Boolean.parseBoolean(info.getProperty("authVault"));
+      if (isAuthVaultModeOn) {
+        VaultUser vault = VaultAuthentication.from(props);
+        props.setProperty("user", vault.getUsername());
+        props.setProperty("password", vault.getPassword());
+      }
 
       // Enforce login timeout, if specified, by running the connection
       // attempt in a separate thread. If we hit the timeout without the
