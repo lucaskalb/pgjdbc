@@ -1,9 +1,8 @@
 package org.postgresql.vault;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Objects;
+import java.util.Scanner;
 
 class VaultReadCommand {
 
@@ -26,25 +25,24 @@ class VaultReadCommand {
 
   String execute() {
     try {
-      StringBuilder result = new StringBuilder();
-      Process p = Runtime.getRuntime().exec(command);
+      StringBuffer buffer = new StringBuffer();
+      Process process = Runtime.getRuntime().exec(command);
 
-      new Thread(() -> {
-        BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String line = null;
+      new Thread(readOutputOf(process, buffer)).start();
 
-        try {
-          while ((line = input.readLine()) != null)
-            result.append(line).append("\n");
-        } catch (IOException e) {
-
-          e.printStackTrace();
-        }
-      }).start();
-      p.waitFor();
-      return result.toString();
+      process.waitFor();
+      return buffer.toString();
     } catch (InterruptedException | IOException e) {
       throw new RuntimeException("Error on vault command execute", e);
     }
+  }
+
+  private Runnable readOutputOf(Process process, StringBuffer buffer) {
+    return () -> {
+      Scanner sc = new Scanner(process.getInputStream());
+
+      while (sc.hasNext())
+        buffer.append(sc.nextLine()).append("\n");
+    };
   }
 }
